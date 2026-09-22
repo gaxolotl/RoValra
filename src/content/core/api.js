@@ -8,12 +8,17 @@ import { getValidApiKey, invalidateApiKey } from './utils/trackers/apiKey.js';
 import { showSystemAlert } from './ui/roblox/alert.js';
 
 import { updateUserLocationIfChanged } from './utils/location.js';
+import {
+    getBackendApiBaseUrl,
+    getBackendBaseUrlForSubdomain,
+} from './backendUrl.js';
 const activeRequests = new Map();
 const responseCache = new Map();
 const USER_BADGES_CACHE_TTL_MS = 5 * 60 * 1000;
 let gameJoinErrorCount = 0;
 let lastGameJoinRequestTime = 0;
 const GAMEJOIN_TIMEOUT_MS = 2000;
+const GAMEJOIN_V2_PATH = '/v1/gamejoin-v2/';
 const TEMPORARILY_LIMITED_MESSAGE =
     'Your account has been temporarily limited for violating terms of service.';
 
@@ -102,7 +107,113 @@ function getResponseCacheTtl(options) {
     return 0;
 }
 
-function normalizeGameJoinEndpoint(endpoint) {
+function parseGameJoinV2Flag(data) {
+    if (typeof data === 'boolean') return data;
+    if (typeof data === 'string') {
+        const normalized = data.trim().toLowerCase();
+        if (normalized === 'true') return true;
+        if (normalized === 'false') return false;
+    }
+    if (data && typeof data === 'object') {
+        if (typeof data.enabled === 'boolean') return data.enabled;
+        if (typeof data.useV2 === 'boolean') return data.useV2;
+        if (typeof data.gamejoinV2 === 'boolean') return data.gamejoinV2;
+    }
+    return true;
+}
+
+async function fetchGameJoinV2Flag() {
+    try {
+        const response = await fetch(
+            `${await getBackendApiBaseUrl()}${GAMEJOIN_V2_PATH}?_RoValraRequest`,
+            {
+                method: 'GET',
+                credentials: 'omit',
+                cache: 'no-store',
+                headers: {
+                    Accept: 'application/json',
+                    'x-rovalra-user-agent': getRovalraUserAgent(),
+                },
+            },
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const text = await response.text();
+        let data = text;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {}
+
+        gameJoinUseV2 = parseGameJoinV2Flag(data);
+    } catch (error) {
+        gameJoinUseV2 = true;
+        console.warn(
+            'RoValra API: Failed to fetch gamejoin version flag. Falling back to v2.',
+            error,
+        );
+    }
+
+    return gameJoinUseV2;
+}
+
+function refreshGameJoinVersionPreference() {
+    const navigationKey = getCurrentNavigationKey();
+    if (
+        gameJoinVersionPromise &&
+        gameJoinVersionNavigationKey === navigationKey
+    ) {
+        return gameJoinVersionPromise;
+    }
+
+    gameJoinVersionNavigationKey = navigationKey;
+    gameJoinVersionPromise = fetchGameJoinV2Flag();
+    return gameJoinVersionPromise;
+}
+
+function setupGameJoinVersionNavigationRefresh() {
+    if (
+        typeof window === 'undefined' ||
+        window.__rovalraGameJoinVersionNavigationRefresh
+    ) {
+        return;
+    }
+
+    window.__rovalraGameJoinVersionNavigationRefresh = true;
+    const refreshSoon = () => {
+        queueMicrotask(() => {
+            refreshGameJoinVersionPreference();
+        });
+    };
+
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function (...args) {
+        const result = originalPushState.apply(this, args);
+        refreshSoon();
+        return result;
+    };
+
+    history.replaceState = function (...args) {
+        const result = originalReplaceState.apply(this, args);
+        refreshSoon();
+        return result;
+    };
+
+    window.addEventListener('popstate', refreshSoon);
+    window.addEventListener('hashchange', refreshSoon);
+    window.addEventListener('pageshow', refreshSoon);
+    window.addEventListener('rovalra:locationchange', refreshSoon);
+
+    refreshGameJoinVersionPreference();
+}
+
+setupGameJoinVersionNavigationRefresh();
+
+function normalizeGameJoinEndpoint(endpoint, useV2 = true) {
     if (typeof endpoint !== 'string') return endpoint;
     return endpoint.replace(/^\/v[12]\//, '/v1/');
 }
@@ -474,9 +585,7 @@ export async function callRobloxApi(options) {
         }
 
         const baseUrl = isRovalraApi
-            ? subdomain === 'www'
-                ? 'https://www.rovalra.com'
-                : `https://${subdomain}.rovalra.com`
+            ? await getBackendBaseUrlForSubdomain(subdomain)
             : `https://${subdomain}.roblox.com`;
         let fullUrl = customFullUrl || `${baseUrl}${endpoint}`;
 

@@ -4,9 +4,9 @@ import { createDropdown } from '../../core/ui/dropdown.js';
 import { createStyledInput } from '../../core/ui/catalog/input.js';
 import { createOverlay } from '../../core/ui/overlay.js';
 import { settings } from '../../core/settings/getSettings.js';
+import { getBackendApiBaseUrl } from '../../core/backendUrl.js';
 
 const DOCS_INDEX_ENDPOINT = '/v1/roblox-docs';
-const DOCS_BASE_URL = 'https://apis.rovalra.com';
 const SWAGGER_STYLE_ID = 'rovalra-swagger-ui-style';
 const SWAGGER_THEME_STYLE_ID = 'rovalra-swagger-theme-style';
 const SWAGGER_BRIDGE_HEADER = 'x-rovalra-swagger-request';
@@ -96,10 +96,11 @@ function loadSwaggerStyles() {
     }
 }
 
-function getDocsUrl(documentInfo) {
+async function getDocsUrl(documentInfo) {
     if (!documentInfo?.docs_url) return '';
     try {
-        return new URL(documentInfo.docs_url, DOCS_BASE_URL).toString();
+        const baseUrl = await getBackendApiBaseUrl();
+        return new URL(documentInfo.docs_url, baseUrl).toString();
     } catch {
         return '';
     }
@@ -140,13 +141,15 @@ async function fetchDocsIndex() {
         throw new Error('The docs index returned an unexpected response.');
     }
 
-    return data.documents
-        .map((documentInfo) => ({
+    const documents = await Promise.all(
+        data.documents.map(async (documentInfo) => ({
             ...documentInfo,
-            docsUrl: getDocsUrl(documentInfo),
+            docsUrl: await getDocsUrl(documentInfo),
             label: getDocumentLabel(documentInfo),
-        }))
-        .filter((documentInfo) => documentInfo.docsUrl);
+        })),
+    );
+
+    return documents.filter((documentInfo) => documentInfo.docsUrl);
 }
 
 async function fetchOpenApiSpec(documentInfo) {

@@ -8,6 +8,10 @@ const STORAGE_KEY_DATACENTERS = 'rovalraDatacentersCache';
 const DATACENTER_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
 const STORAGE_KEY_REGIONS = 'cachedRegions';
 const STORAGE_KEY_CONTINENTS = 'cachedRegionContinents';
+// Fired on document when the backend datacenter list changed and the
+// processed region set was rebuilt. UI modules (filter panel, globe)
+// listen for this to re-render with the new regions.
+export const EVT_REGIONS_CHANGED = 'rovalraRegionsChanged';
 
 export let serverIpMap = {};
 export let datacenterList = [];
@@ -146,7 +150,22 @@ async function refreshDatacenterMap() {
         const apiData = await fetchDatacenterList();
 
         await writeDatacenterCache(apiData);
+        if (
+            datacenterList.length &&
+            JSON.stringify(apiData) === JSON.stringify(datacenterList)
+        ) {
+            return false;
+        }
         processDataIntoMap(apiData);
+        // The list changed: drop the processed region set built from the
+        // old list and rebuild it, then tell the UI to re-render.
+        cachedRegionData = null;
+        REGIONS = {};
+        await CacheHandler.remove('regions', STORAGE_KEY_REGIONS, 'local');
+        await CacheHandler.remove('regions', STORAGE_KEY_CONTINENTS, 'local');
+        await fetchAndProcessRegions();
+        document.dispatchEvent(new CustomEvent(EVT_REGIONS_CHANGED));
+        return true;
     } catch (e) {
         const msg = e.name === 'AbortError' ? 'Timeout' : e.message;
         console.warn(

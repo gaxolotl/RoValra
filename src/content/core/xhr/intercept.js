@@ -53,6 +53,8 @@ const LayeredAssetTypes = [
     const ROBLOX_ADMIN_GROUP_ID = 1200769;
     const OMNI_RECOMMENDATION_API_URL =
         'https://apis.roblox.com/discovery-api/omni-recommendation';
+    const OMNI_SEARCH_API_URL =
+        'https://apis.roblox.com/search-api/omni-search';
     const FRIEND_CAROUSEL_TOPIC_ID = 600000000;
     const FRIEND_CAROUSEL_TREATMENT_TYPE = 'FriendCarousel';
     const THUMBNAILS_API_HOST = 'thumbnails.roblox.com';
@@ -94,6 +96,29 @@ const LayeredAssetTypes = [
         try {
             return new URL(url, window.location.origin).hostname ===
                 THUMBNAILS_API_HOST;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Public discovery feeds whose listings the metadata reporter may sample:
+    // home-page recommendations, game search results, and user search results.
+    // Viewer-specific endpoints (continue-playing, friends, presence, settings)
+    // are deliberately never matched here.
+    function isDiscoveryFeedRequest(requestUrl) {
+        if (typeof requestUrl !== 'string' || !requestUrl) return false;
+        if (
+            requestUrl.includes(OMNI_RECOMMENDATION_API_URL) ||
+            requestUrl.includes(OMNI_SEARCH_API_URL)
+        ) {
+            return true;
+        }
+        try {
+            const parsed = new URL(requestUrl, window.location.origin);
+            return (
+                parsed.hostname === 'users.roblox.com' &&
+                parsed.pathname.includes('/v1/users/search')
+            );
         } catch (e) {
             return false;
         }
@@ -1116,6 +1141,22 @@ const LayeredAssetTypes = [
                     )
                     .catch(() => {});
             }
+            if (isDiscoveryFeedRequest(requestUrl)) {
+                response
+                    .clone()
+                    .json()
+                    .then((d) =>
+                        document.dispatchEvent(
+                            new CustomEvent(
+                                'rovalra-discovery-feed-response',
+                                {
+                                    detail: { url: requestUrl, data: d },
+                                },
+                            ),
+                        ),
+                    )
+                    .catch(() => {});
+            }
             if (
                 requestUrl.includes(TRADES_API_URL) &&
                 requestUrl.includes('/tradableitems')
@@ -1381,6 +1422,14 @@ const LayeredAssetTypes = [
                         /\/v\d+\/games\/\d+\/servers\//.test(url)
                     )
                         triggerEvent('rovalra-game-servers-response', {
+                            url,
+                            data: JSON.parse(xhr.responseText),
+                        });
+                    if (
+                        typeof url === 'string' &&
+                        isDiscoveryFeedRequest(url)
+                    )
+                        triggerEvent('rovalra-discovery-feed-response', {
                             url,
                             data: JSON.parse(xhr.responseText),
                         });

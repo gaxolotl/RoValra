@@ -23,7 +23,7 @@ export const SETTINGS_CONFIG = {
                 type: 'select',
                 options: [
                     { label: 'English', value: 'en' },
-					{ label: 'Polish (Polski)', value: 'pl' },
+                    { label: 'Polish (Polski)', value: 'pl' },
                     { label: 'Romanian (Română)', value: 'ro' },
                     { label: 'Spanish (Español)', value: 'es' },
                     { label: 'Automatic', value: 'auto' },
@@ -2376,6 +2376,16 @@ export const SETTINGS_CONFIG = {
                 type: 'checkbox',
                 default: true,
             },
+            MetadataSharingEnabled: {
+                label: "Share public game and user metadata with RoValra's API",
+                description: [
+                    'This feature sends public game details (name, creator, player counts) and public profile details (username, display name) to RoValra\u2019s API when you visit game or profile pages, browse home-page recommendations and game search results, or search for users.',
+                    'Reports are only hints: nothing is published until a RoValra bot re-fetches the same game or profile from Roblox and confirms it.',
+                    'Reports carry no identity and are sent without your login state; sending only slows down if the backend reports trouble (rate limits or errors). No private data is sent: no descriptions, no viewer identity, no tokens, no private servers, and no contact or account details.',
+                ],
+                type: 'checkbox',
+                default: false,
+            },
             playtimeEnabled: {
                 label: 'Playtime Tracking',
                 description: [
@@ -2549,6 +2559,42 @@ export const SETTINGS_CONFIG = {
                 description: ['Shows the Fun Stuff tab in RoValra settings.'],
                 type: 'checkbox',
                 default: false,
+            },
+            CustomBackend: {
+                label: 'Custom backend URL',
+                description: [
+                    'Point RoValra at a self-hosted backend instead of the official one.',
+                    "Only enable this if you're running your own server. Leave it off to use the official backend.",
+                    'If only the API URL is set, it is also used for static assets, remote config and changelogs.',
+                ],
+                type: 'checkbox',
+                default: false,
+                childSettings: {
+                    customBackendApiUrl: {
+                        label: 'Backend API URL',
+                        description: [
+                            'Origin of the RoValra API, for example http://localhost:8080.',
+                        ],
+                        type: 'input',
+                        inputType: 'url',
+                        inputWidth: '280px',
+                        placeholder: 'https://apis.example.com',
+                        trim: true,
+                        default: null,
+                    },
+                    customBackendWwwUrl: {
+                        label: 'Backend WWW URL',
+                        description: [
+                            'Origin used for static assets, remote config and changelogs.',
+                        ],
+                        type: 'input',
+                        inputType: 'url',
+                        inputWidth: '280px',
+                        placeholder: 'https://www.example.com',
+                        trim: true,
+                        default: null,
+                    },
+                },
             },
         },
     },

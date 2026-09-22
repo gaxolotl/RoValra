@@ -8,6 +8,7 @@ import { init as initWhatAmIJoining } from './features/games/revertlogo.js';
 import { init as initEasterEggLinks } from './features/sitewide/easterEggs/links.js';
 import { init as initCssFixes } from './features/sitewide/cssfixes.js';
 import { init as initServerListener } from './features/games/serverlistener.js';
+import { init as initMetadataReporter } from './features/metadata/metadataReporter.js';
 import { init as initBetaPrograms } from './features/navigation/betaprograms.js';
 import { init as initVideoTest } from './features/developer/videotest.js';
 import { init as initStreamerMode } from './features/sitewide/streamermode.js';
@@ -225,6 +226,7 @@ const featureRoutes = [
             initCssFixes,
             initWhatAmIJoining,
             initServerListener,
+            initMetadataReporter,
             initOnboarding,
             initVideoTest,
             initStreamerMode,

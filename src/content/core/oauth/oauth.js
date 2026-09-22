@@ -7,6 +7,7 @@ import { callRobloxApi } from '../api.js';
 import { getAuthenticatedUserId } from '../user.js';
 import { shouldUseFallback, getValidFallbackToken } from './fallback.js';
 import { getCurrentUserTierSync } from '../settings/handlesettings.js';
+import { getBackendApiBaseUrl } from '../backendUrl.js';
 
 let activeOAuthPromise = null;
 
@@ -261,8 +262,7 @@ async function startOAuthFlow(silent = false) {
                     body: {
                         clientId: '5835339573709822795',
                         responseTypes: ['Code'],
-                        redirectUri:
-                            'https://apis.rovalra.com/v1/auth/callback',
+                        redirectUri: `${await getBackendApiBaseUrl()}/v1/auth/callback`,
                         scopes: [
                             { scopeType: 'openid', operations: ['read'] },
                             { scopeType: 'profile', operations: ['read'] },
@@ -380,7 +380,7 @@ async function resumeOAuthFlow(userId, progress) {
                 body: {
                     clientId: '5835339573709822795',
                     responseTypes: ['Code'],
-                    redirectUri: 'https://apis.rovalra.com/v1/auth/callback',
+                    redirectUri: `${await getBackendApiBaseUrl()}/v1/auth/callback`,
                     scopes: [
                         { scopeType: 'openid', operations: ['read'] },
                         { scopeType: 'profile', operations: ['read'] },

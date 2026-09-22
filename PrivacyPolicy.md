@@ -54,7 +54,24 @@ For certain features, the Extension sends specific, non-personal data—namely P
 
 This feature is **completely optional** and can be turned off at any point in the extension's settings. When this feature is active, only the PlaceId and serverId are transmitted in the data payload. No data that could link a user to this information is explicitly logged by our software.
 
-**4. User Rights: Access and Erasure**
+**4. Optional Public Metadata Sharing (Games and Profiles)**
+
+In addition to PlaceId/serverId sharing, the Extension offers a separate, **opt-in and off by default** feature that reports public game and profile details to a developer-controlled API when you visit game or profile pages.
+
+When enabled, the Extension sends only allowlisted public fields:
+
+*   **Games:** universe ID, place ID, game name, creator ID/name/type and verified-badge flag, creation/update timestamps, current player count, visit and favorite counts, max players, and genre. These are collected from game pages you visit as well as public listings you browse: home-page recommendations, game search results, and server lists.
+*   **Profiles:** user ID, username, display name, account creation timestamp, banned flag, and verified-badge flag. These are collected from profile pages you visit and from public user search results. Username history and any other profile content are never sent.
+
+These reports are **hints only**. Nothing is published from them until a RoValra bot re-fetches the same game or profile directly from Roblox and confirms the values. The backend keeps an archive of past confirmed values.
+
+**Anonymity:** reports contain no identity and are transmitted without your login state (no cookies, tokens, or viewer IDs). Sending only slows down if the backend reports trouble (rate limits or repeated errors), in which case reports back off temporarily. Like all developer-API traffic, requests necessarily pass through Cloudflare (see section 7), which processes the network-level IP address to establish the connection; nothing in the report payload itself identifies you.
+
+The following are **never** sent by this feature: profile/game descriptions, your own identity or viewer ID, page URLs, authentication or OAuth tokens, cookies, private-server IDs or access codes, server/player/session IDs, IP addresses, datacenters, geolocation, friend/follow state, inventory, presence, favorites, votes, email, phone, birthdate, age, or country.
+
+You can turn this feature off at any point in the extension's settings. Like other developer-API traffic, requests necessarily pass through Cloudflare (see section 6).
+
+**5. User Rights: Access and Erasure**
 
 We respect your control over your personal data. If you are a donator and your data is stored in our system, you have the following rights:
 
@@ -66,7 +83,7 @@ To exercise these rights, please contact us via email at **RoValraContact@gmail.
 *   **Subject:** "Right to Access"
 *   **Subject:** "Right to Erase"
 
-**5. Data Security**
+**6. Data Security**
 
 *   **General Users:** As the extension does not store or transmit personal data for general users to external servers, traditional server-side encryption for user databases is not applicable. Processing generally occurs on your local machine.
 *   **Donators:** For the specific subset of users (Donators) whose data is stored:
@@ -74,7 +91,7 @@ To exercise these rights, please contact us via email at **RoValraContact@gmail.
     *   OAuth tokens are treated with high sensitivity and are never shared with third parties.
 *   **Network Security:** All network interactions with our APIs are secured via **HTTPS** and protected by standard network infrastructure providers.
 
-**6. Third-Party Services**
+**7. Third-Party Services**
 
 To provide its features, RoValra interacts with several Application Programming Interfaces (APIs):
 
@@ -85,12 +102,12 @@ To provide its features, RoValra interacts with several Application Programming 
     *   For information on how Cloudflare handles network data, please refer to [Cloudflare’s Privacy Policy](https://www.cloudflare.com/privacypolicy/).
 3.  **Other Third-Party APIs:** The Extension may interact with other external APIs not controlled by Roblox or the developer. These are used strictly to *retrieve* public information required for specific features.
 
-**7. Data Retention**
+**8. Data Retention**
 
 *   **General Users:** Since no PII is collected, there is no retention period. Network logs processed by Cloudflare are retained according to their specific security policies.
 *   **Donators:** User IDs, Usernames, and OAuth tokens are retained indefinitely to allow you to maintain your donator status and badge preferences, unless you request a "Right to Erase."
 
-**8. Children's Privacy**
+**9. Children's Privacy**
 
 The Extension is designed to be compliant with the Children's Online Privacy Protection Act (COPPA).
 *   **General Use:** We do not collect personal information from children via the general use of the extension.

@@ -7,6 +7,65 @@ const serverUptimeBases = {};
 const serverUptimeIsEstimate = {};
 const serverVersionsCache = {};
 let uptimeUpdateInterval = null;
+
+// Servers whose observed version/datacenter we already reported this session.
+const reportedObservations = new Set();
+let serverDataEnabledCache = null;
+
+async function isServerDataEnabled() {
+    if (serverDataEnabledCache !== null) return serverDataEnabledCache;
+    try {
+        const result = await chrome.storage.local.get({
+            ServerdataEnabled: true,
+        });
+        serverDataEnabledCache = result.ServerdataEnabled !== false;
+    } catch {
+        serverDataEnabledCache = true;
+    }
+    return serverDataEnabledCache;
+}
+
+// Reports the real place version and datacenter the client observed from the
+// Roblox gamejoin joinScript. This is what makes server versions accurate; the
+// backend never invents them. Respects the ServerdataEnabled consent setting.
+async function reportServerObservation(placeId, serverId, joinScript) {
+    if (!placeId || !serverId || !joinScript) return;
+
+    const placeVersion = Number(joinScript.PlaceVersion) || 0;
+    const datacenterId = Number(joinScript.DataCenterId) || 0;
+    if (!placeVersion && !datacenterId) return;
+
+    const key = `${placeId}:${serverId}:${placeVersion}:${datacenterId}`;
+    if (reportedObservations.has(key)) return;
+    reportedObservations.add(key);
+
+    if (!(await isServerDataEnabled())) return;
+
+    const ipAddress =
+        (Array.isArray(joinScript.UdmuxEndpoints) &&
+            joinScript.UdmuxEndpoints[0]?.Address) ||
+        joinScript.MachineAddress ||
+        '';
+
+    callRobloxApi({
+        isRovalraApi: true,
+        endpoint: '/process_servers',
+        method: 'POST',
+        body: {
+            place_id: String(placeId),
+            server_ids: [String(serverId)],
+            servers: [
+                {
+                    server_id: String(serverId),
+                    place_version: placeVersion,
+                    datacenter_id: datacenterId,
+                    ip_address: ipAddress,
+                },
+            ],
+        },
+    }).catch(() => {});
+}
+
 export function formatUptime(seconds, isEstimate = false) {
     if (typeof seconds !== 'number' || seconds < 0) return 'N/A';
     const days = Math.floor(seconds / 86400);
@@ -176,7 +235,6 @@ export async function fetchServerDetails(placeId, serverIds) {
 
 export async function fetchServerRegion(placeId, serverId, options = {}) {
     try {
-
         if (serverId && serverDataCache.has(serverId)) {
             return serverDataCache.get(serverId);
         }
@@ -280,6 +338,8 @@ export async function fetchServerRegion(placeId, serverId, options = {}) {
                     }
                 }
             }
+
+            reportServerObservation(placeId, effectiveId, info.joinScript);
         }
 
         const finalId =

@@ -8,6 +8,7 @@ import {
     serverIpMap,
     getContinent,
     getStateCodeFromRegion,
+    EVT_REGIONS_CHANGED,
 } from '../../../regions.js';
 import { createButton } from '../../../ui/buttons.js';
 import { showRegionDonationPopup } from '../../../review/review.js';
@@ -428,7 +429,8 @@ function createGlobePanel(container) {
                         detail: { iconUrl: assets.rovalraIcon },
                     }),
                 );
-                if (title) title.textContent = ts('regionSelector.gilbertsInYourArea');
+                if (title)
+                    title.textContent = ts('regionSelector.gilbertsInYourArea');
             } else {
                 document.dispatchEvent(
                     new CustomEvent(EVT_GLOBE_EASTER_EGG_OFF),
@@ -507,6 +509,8 @@ async function ensureGlobeInitialized(theme) {
     }
 
     const mapUrl = theme === 'dark' ? assets.mapDark : assets.mapLight;
+    State.globe.mapUrl = mapUrl;
+    State.globe.lastTheme = theme;
     State.activeServerCounts = buildServerCountsMap(State.apiCounts || {});
     document.dispatchEvent(
         new CustomEvent(EVT_INIT_GLOBE, {
@@ -595,12 +599,16 @@ function populateRegionSidePanel(container, theme) {
             row.innerHTML = DOMPurify.sanitize(
                 `<div><strong>${item.label}</strong><span class="country"> ${item.subLabel}</span></div><div class="rovalra-region-count ${theme}">${item.count}</div>`,
             );
-            addTooltip(row, ts('regionSelector.filterByRegionItem', {
-                region: item.label,
-                count: item.count,
-            }), {
-                position: 'left',
-            });
+            addTooltip(
+                row,
+                ts('regionSelector.filterByRegionItem', {
+                    region: item.label,
+                    count: item.count,
+                }),
+                {
+                    position: 'left',
+                },
+            );
 
             row.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -780,7 +788,9 @@ function handleGlobeHover(e) {
     const countryCode = regionCode.split('-')[0].toLowerCase();
     const serverCount = State.activeServerCounts[regionCode] || 0;
     const dcCount = State.dataCenterCounts[regionCode] || 0;
-    tooltip.innerHTML = DOMPurify.sanitize(`<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 2px;"><img class="rovalra-globe-tooltip-flag" alt=""><span style="font-weight: 600; font-size: 12px; color: #eee;">${city}</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 0px; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 3px; width: 100%;"><span>${ts('regionSelector.servers')}<b style="color:#fff;">${serverCount.toLocaleString()}</b></span>${dcCount > 0 ? `<span>${ts('regionSelector.datacenters')}<b style="color:#fff;">${dcCount.toLocaleString()}</b></span>` : ''}</div>`);
+    tooltip.innerHTML = DOMPurify.sanitize(
+        `<div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 2px;"><img class="rovalra-globe-tooltip-flag" alt=""><span style="font-weight: 600; font-size: 12px; color: #eee;">${city}</span></div><div style="display: flex; flex-direction: column; align-items: center; gap: 0px; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 3px; width: 100%;"><span>${ts('regionSelector.servers')}<b style="color:#fff;">${serverCount.toLocaleString()}</b></span>${dcCount > 0 ? `<span>${ts('regionSelector.datacenters')}<b style="color:#fff;">${dcCount.toLocaleString()}</b></span>` : ''}</div>`,
+    );
     const flag = tooltip.querySelector('.rovalra-globe-tooltip-flag');
     if (flag) {
         flag.src = `https://flagcdn.com/w40/${countryCode}.png`;
@@ -951,12 +961,12 @@ function attachGlobalListeners() {
         EVT_REQUEST_REGION_SERVERS,
         onRequestMoreRegionServers,
     );
+    document.addEventListener(EVT_REGIONS_CHANGED, onBackendRegionsChanged);
 
     State.listenersAttached = true;
 }
 
-async function initializeData() {
-    await loadDatacenterMap();
+async function rebuildRegionState() {
     const data = await getRegionData();
 
     State.serverIpMap = serverIpMap;
@@ -981,9 +991,42 @@ async function initializeData() {
         };
     }
     State.regions = grouped;
+}
+
+async function initializeData() {
+    await loadDatacenterMap();
+    await rebuildRegionState();
 
     document.dispatchEvent(new CustomEvent(EVT_REGIONS_UPDATED));
     await fetchCounts();
+}
+
+// The backend datacenter list changed after startup: rebuild everything
+// from the new regions and re-seed the globe so new markers appear.
+async function onBackendRegionsChanged() {
+    try {
+        await rebuildRegionState();
+    } catch (e) {
+        console.warn('RoValra: Failed to rebuild regions.', e);
+        return;
+    }
+    document.dispatchEvent(new CustomEvent(EVT_REGIONS_UPDATED));
+    await fetchCounts();
+    if (State.globe.initDispatched) {
+        State.activeServerCounts = buildServerCountsMap(State.apiCounts || {});
+        document.dispatchEvent(
+            new CustomEvent(EVT_INIT_GLOBE, {
+                detail: {
+                    REGIONS: State.regions,
+                    mapUrl: State.globe.mapUrl,
+                    countriesData: null,
+                    theme: State.globe.lastTheme,
+                    serverCounts: State.activeServerCounts,
+                    dataCenterCounts: State.dataCenterCounts,
+                },
+            }),
+        );
+    }
 }
 
 function setupUI() {

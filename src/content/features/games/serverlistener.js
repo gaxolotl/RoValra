@@ -11,6 +11,10 @@ async function sendToLocalAPI(placeId, serverIds) {
         return;
     }
 
+    const placeName = (document.title || '')
+        .replace(/\s*[-|]\s*Roblox\s*$/i, '')
+        .trim();
+
     try {
         await callRobloxApi({
             isRovalraApi: true,
@@ -19,6 +23,7 @@ async function sendToLocalAPI(placeId, serverIds) {
             body: {
                 place_id: placeId,
                 server_ids: serverIds,
+                place_name: placeName,
             },
         });
     } catch (apiError) {
