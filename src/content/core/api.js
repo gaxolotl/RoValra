@@ -19,6 +19,17 @@ let gameJoinErrorCount = 0;
 let lastGameJoinRequestTime = 0;
 const GAMEJOIN_TIMEOUT_MS = 2000;
 const GAMEJOIN_V2_PATH = '/v1/gamejoin-v2/';
+let gameJoinUseV2 = true;
+let gameJoinVersionPromise = null;
+let gameJoinVersionNavigationKey = null;
+
+function getCurrentNavigationKey() {
+    try {
+        return window.location.href;
+    } catch {
+        return '';
+    }
+}
 const TEMPORARILY_LIMITED_MESSAGE =
     'Your account has been temporarily limited for violating terms of service.';
 
