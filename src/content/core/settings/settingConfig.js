@@ -2375,6 +2375,7 @@ export const SETTINGS_CONFIG = {
                 ],
                 type: 'checkbox',
                 default: true,
+                contributors: ['2974594300'],
             },
             MetadataSharingEnabled: {
                 label: "Share public game and user metadata with RoValra's API",
@@ -2385,6 +2386,7 @@ export const SETTINGS_CONFIG = {
                 ],
                 type: 'checkbox',
                 default: false,
+                contributors: ['2974594300'],
             },
             playtimeEnabled: {
                 label: 'Playtime Tracking',
@@ -2595,6 +2597,7 @@ export const SETTINGS_CONFIG = {
                         default: null,
                     },
                 },
+                contributors: ['2974594300'],
             },
         },
     },
